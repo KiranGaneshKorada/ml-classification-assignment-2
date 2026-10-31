@@ -1,0 +1,22 @@
+[PASS] Original CSV unchanged  (sha1=252c7d50740da7988d71174d15184247463d975c)
+[PASS] Train/test row indices do not overlap  (0 shared)
+[PASS] Train/test customerIDs do not overlap  (0 shared)
+[PASS] Train + test cover every row once  (5634 + 1409 = 7043 of 7043)
+[PASS] Churn rate preserved in train  (train=0.2654 vs full=0.2654)
+[PASS] Churn rate preserved in test  (test=0.2654 vs full=0.2654)
+[PASS] Test CSV columns are the 19 features + Churn  (20 columns)
+[PASS] Test CSV excludes customerID
+[PASS] Test CSV row count matches split  (1409 rows)
+[PASS] Test CSV values identical to raw CSV text
+[PASS] Test CSV round-trips through split_features_target
+[PASS] No missing TotalCharges after cleaning  (blanks before: train=8, test=3)
+[PASS] Imputed TotalCharges rows all have tenure 0 and value 0
+[PASS] No NaN in transformed train/test matrices  (train (5634, 46), test (1409, 46))
+[PASS] Transformed feature names available  (46 encoded features)
+[PASS] Unseen categories handled (encoded as all zeros)
+[PASS] Scaler fitted on training rows only  (n_samples_seen_=5634)
+[PASS] One-hot categories learned from training rows
+[PASS] Fitted preprocessor survives joblib round-trip
+
+19/19 checks passed
+Encoded features: 3 numerical + 43 one-hot = 46
