@@ -1,0 +1,13 @@
+# Runtime dependencies for app.py and the src/ scripts.
+# Pinned to the environment the saved models were trained and tested in: the
+# model/*.joblib pipelines are scikit-learn 1.6.1 objects and must be loaded with
+# that exact scikit-learn version. numpy 2.0.2 requires Python 3.9-3.12.
+streamlit==1.50.0
+scikit-learn==1.6.1
+pandas==2.3.3
+numpy==2.0.2
+matplotlib==3.9.4
+joblib==1.5.3
+altair==5.5.0
+# scikit-learn runtime dependency, pinned to the tested version for identical behaviour.
+scipy==1.13.1
