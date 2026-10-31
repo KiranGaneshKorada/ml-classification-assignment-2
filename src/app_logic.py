@@ -1,0 +1,214 @@
+"""Streamlit-independent logic for the dashboard: loading saved models, reading and
+validating uploaded CSVs, and evaluating every model on the uploaded data.
+
+Nothing here fits a model or transformer: saved pipelines are only used for
+predict() / predict_proba() / transform().
+"""
+import io
+import warnings
+
+import joblib
+import numpy as np
+import pandas as pd
+from pandas.errors import EmptyDataError, ParserError
+
+from src.evaluate_models import (
+    METRIC_COLUMNS, classification_report_frame, compute_metrics, confusion_matrix_frame,
+    positive_class_proba,
+)
+from src.preprocessing import (
+    CATEGORICAL_FEATURES, FEATURE_COLUMNS, ID_COLUMN, TARGET, TARGET_MAPPING, clean_features,
+)
+from src.train_models import MODEL_DIR, MODEL_NAMES, RANKING_METRICS
+
+# Short, results-free descriptions shown next to the selected model.
+MODEL_DESCRIPTIONS = {
+    "logistic_regression": "A linear model that estimates churn probability from a weighted sum of the "
+                           "scaled and one-hot encoded features. Fast, stable and easy to interpret.",
+    "decision_tree": "Learns a hierarchy of if/else splits on the features. Unlimited depth here, so it can "
+                     "fit the training data very closely and may overfit.",
+    "knn": "Predicts from the 5 most similar training customers (Euclidean distance on the scaled, "
+           "encoded features). No explicit training step; all training rows are stored.",
+    "naive_bayes": "Gaussian Naive Bayes assumes features are independent given the class. Very fast; "
+                   "tends to flag many customers as churners (high recall, lower precision).",
+    "svm": "A support vector machine with an RBF kernel that finds a maximum-margin boundary. "
+           "Probabilities come from Platt scaling fitted during training.",
+}
+MODEL_CONFIGS = {
+    "logistic_regression": "LogisticRegression(max_iter=2000, random_state=42)",
+    "decision_tree": "DecisionTreeClassifier(random_state=42)",
+    "knn": "KNeighborsClassifier(n_neighbors=5)",
+    "naive_bayes": "GaussianNB()",
+    "svm": "SVC(probability=True, random_state=42)",
+}
+LABEL_NAMES = {v: k for k, v in TARGET_MAPPING.items()}  # 0 -> "No", 1 -> "Yes"
+
+
+class DataValidationError(ValueError):
+    """Raised for uploads that cannot be evaluated; `problems` lists each issue."""
+
+    def __init__(self, title, problems=()):
+        super().__init__(title)
+        self.title = title
+        self.problems = list(problems)
+
+
+def load_models(model_dir=MODEL_DIR):
+    """Load every saved pipeline. Returns (models by key, list of error messages)."""
+    models, errors = {}, []
+    for key, name in MODEL_NAMES.items():
+        path = model_dir / f"{key}.joblib"
+        if not path.exists():
+            errors.append(f"{name}: file not found ({path.name})")
+            continue
+        try:
+            models[key] = joblib.load(path)
+        except Exception as exc:  # noqa: BLE001 - surface any unpickling problem to the user
+            errors.append(f"{name}: could not be loaded ({type(exc).__name__}: {exc})")
+    return models, errors
+
+
+def read_csv_bytes(data, filename="upload.csv"):
+    """Parse uploaded bytes into a DataFrame, raising DataValidationError on bad files."""
+    if not str(filename).lower().endswith(".csv"):
+        raise DataValidationError("Only .csv files are supported.", [f"Received: {filename}"])
+    if not data or not data.strip():
+        raise DataValidationError("The uploaded file is empty.")
+    try:
+        df = pd.read_csv(io.BytesIO(data))
+    except UnicodeDecodeError:
+        raise DataValidationError("The file is not a readable text CSV (encoding error).") from None
+    except (EmptyDataError, ParserError) as exc:
+        raise DataValidationError("The file could not be parsed as CSV.", [str(exc)]) from None
+    df.columns = [str(c).strip() for c in df.columns]
+    return df
+
+
+def validate_dataset(df):
+    """Check columns, labels and numeric fields. Returns (X, y, notes).
+
+    `notes` is a list of (level, message) tuples with level "info" or "warning".
+    """
+    if df.empty:
+        raise DataValidationError("The CSV has a header but no data rows.")
+
+    missing = [c for c in FEATURE_COLUMNS + [TARGET] if c not in df.columns]
+    if missing:
+        raise DataValidationError(
+            f"The CSV is missing {len(missing)} required column(s).",
+            [f"Missing: {', '.join(missing)}",
+             "Required: the 19 input features plus the Churn target (customerID is optional)."])
+
+    problems, notes = [], []
+    labels = df[TARGET].astype(str).str.strip()
+    blank_labels = df[TARGET].isna() | labels.eq("")
+    unexpected = sorted(set(labels[~blank_labels]) - set(TARGET_MAPPING))
+    if blank_labels.any():
+        problems.append(f"Churn is blank in {int(blank_labels.sum())} row(s) "
+                        f"(e.g. data rows {_row_numbers(blank_labels)}).")
+    if unexpected:
+        problems.append(f"Unexpected Churn labels: {', '.join(map(repr, unexpected[:10]))}. "
+                        "Allowed values are exactly 'Yes' and 'No'.")
+
+    for col in ("tenure", "MonthlyCharges"):
+        invalid = pd.to_numeric(df[col], errors="coerce").isna()
+        if invalid.any():
+            problems.append(f"{col} must be numeric but is blank or non-numeric in "
+                            f"{int(invalid.sum())} row(s) (e.g. data rows {_row_numbers(invalid)}).")
+
+    total_text = df["TotalCharges"].astype(str).str.strip()
+    total_blank = df["TotalCharges"].isna() | total_text.eq("")
+    total_invalid = pd.to_numeric(df["TotalCharges"], errors="coerce").isna() & ~total_blank
+    if total_invalid.any():
+        problems.append(f"TotalCharges is non-numeric in {int(total_invalid.sum())} row(s) "
+                        f"(e.g. data rows {_row_numbers(total_invalid)}).")
+
+    if problems:
+        raise DataValidationError("The CSV contains values that cannot be evaluated.", problems)
+
+    if total_blank.any():
+        tenure = pd.to_numeric(df["tenure"], errors="coerce")
+        notes.append(("info", f"{int(total_blank.sum())} blank TotalCharges value(s) were set to 0 by the "
+                              "standard preprocessing rule (blank TotalCharges = not yet billed)."))
+        if (total_blank & tenure.gt(0)).any():
+            notes.append(("warning", f"{int((total_blank & tenure.gt(0)).sum())} blank TotalCharges row(s) "
+                                     "have tenure > 0, so imputing 0 may understate their charges."))
+    extra = [c for c in df.columns if c not in FEATURE_COLUMNS + [TARGET, ID_COLUMN]]
+    if extra:
+        notes.append(("info", f"Ignored {len(extra)} extra column(s): {', '.join(extra[:8])}"
+                              f"{' …' if len(extra) > 8 else ''}"))
+
+    return df[FEATURE_COLUMNS].copy(), labels.map(TARGET_MAPPING).astype(int), notes
+
+
+def find_unseen_categories(X, model):
+    """Categorical values not seen in training. They are encoded as all zeros (handle_unknown="ignore")."""
+    encoder = model.named_steps["preprocessor"].named_steps["encode"].named_transformers_["cat"]
+    cleaned = clean_features(X)
+    unseen = {}
+    for col, known in zip(CATEGORICAL_FEATURES, encoder.categories_):
+        mask = ~cleaned[col].isin(known)
+        if mask.any():
+            unseen[col] = (int(mask.sum()), sorted(cleaned.loc[mask, col].unique())[:5])
+    return unseen
+
+
+def evaluate_all(models, X, y):
+    """Predict with every loaded model; return comparison table and per-model details."""
+    details, rows = {}, []
+    for key, model in models.items():
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # e.g. undefined-metric warnings on single-class uploads
+            y_pred = model.predict(X)
+            y_proba = positive_class_proba(model, X)
+            metrics = compute_metrics(y, y_pred, y_proba)
+            report = classification_report_frame(y, y_pred)
+        details[key] = {"y_pred": y_pred, "y_proba": y_proba, "metrics": metrics,
+                        "confusion": confusion_matrix_frame(y, y_pred), "report": report}
+        rows.append({"Model": MODEL_NAMES[key], **metrics})
+    comparison = pd.DataFrame(rows).set_index("Model")[METRIC_COLUMNS]
+    return comparison, details
+
+
+def rank_models(comparison):
+    """Rank 1..n by MCC with AUC as tie-breaker (same rule as Phase 3); NaN AUC sorts last."""
+    order = comparison.sort_values(RANKING_METRICS, ascending=False, na_position="last").index
+    return pd.Series(range(1, len(order) + 1), index=order).reindex(comparison.index)
+
+
+def best_model_name(comparison):
+    return rank_models(comparison).idxmin()
+
+
+def predictions_table(df, y, details):
+    """Row-level actual vs predicted labels and churn probabilities for every model."""
+    table = pd.DataFrame({"row": np.arange(1, len(y) + 1)})
+    if ID_COLUMN in df.columns:
+        table[ID_COLUMN] = df[ID_COLUMN].to_numpy()
+    table["actual_churn"] = y.map(LABEL_NAMES).to_numpy()
+    for key, detail in details.items():
+        table[f"{key}_predicted"] = pd.Series(detail["y_pred"]).map(LABEL_NAMES).to_numpy()
+        table[f"{key}_churn_probability"] = np.round(detail["y_proba"], 6)
+    return table
+
+
+def evaluate_csv(data, filename, models):
+    """Full upload flow: read -> validate -> evaluate all models. Returns a result dict."""
+    df = read_csv_bytes(data, filename)
+    X, y, notes = validate_dataset(df)
+    unseen = find_unseen_categories(X, next(iter(models.values())))
+    for col, (count, examples) in unseen.items():
+        notes.append(("warning", f"{col}: {count} row(s) with categories not seen in training "
+                                 f"({', '.join(map(repr, examples))}); they are encoded as all zeros."))
+    if y.nunique() < 2:
+        notes.append(("warning", f"Only one Churn class ('{LABEL_NAMES[int(y.iloc[0])]}') is present: "
+                                 "AUC is undefined and MCC is 0 by definition."))
+    comparison, details = evaluate_all(models, X, y)
+    return {"filename": filename, "n_rows": len(df), "y": y, "notes": notes,
+            "comparison": comparison, "details": details, "best": best_model_name(comparison),
+            "predictions": predictions_table(df, y, details)}
+
+
+def _row_numbers(mask, limit=5):
+    rows = (np.flatnonzero(mask.to_numpy()) + 1)[:limit]
+    return ", ".join(map(str, rows)) + (" …" if mask.sum() > limit else "")

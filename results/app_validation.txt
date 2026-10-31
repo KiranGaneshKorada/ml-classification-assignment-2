@@ -1,0 +1,32 @@
+[PASS] All five saved models load  (logistic_regression, decision_tree, knn, naive_bayes, svm)
+[PASS] Original test CSV: 5 x 6 metrics match Phase 3 model_comparison.csv  (max abs diff=0.0)
+[PASS] Original test CSV: every model's predictions match Phase 3
+[PASS] Best model by MCC identified  (Logistic Regression)
+[PASS] Predictions download has actual + predicted label/probability per model  (12 columns, 1409 rows)
+[PASS] Predicted labels in download are Yes/No and match model output
+[PASS] Different row count (250 rows) evaluates
+[PASS] Reordered columns + customerID + extra column accepted
+[PASS] All 11 blank TotalCharges rows handled by preprocessing (set to 0)  (61 rows)
+[PASS] Unseen categorical values evaluate with a warning
+[PASS] Single-class upload: AUC shown as undefined, other metrics computed
+[PASS] Missing column rejected  (The CSV is missing 2 required column(s). Missing: tenure, Contract Required: the 19 input features plus the Ch)
+[PASS] Missing Churn column rejected  (The CSV is missing 1 required column(s). Missing: Churn Required: the 19 input features plus the Churn target )
+[PASS] Unexpected Churn label rejected  (The CSV contains values that cannot be evaluated. Unexpected Churn labels: 'Maybe'. Allowed values are exactly)
+[PASS] Blank Churn label rejected  (The CSV contains values that cannot be evaluated. Churn is blank in 1 row(s) (e.g. data rows 4).)
+[PASS] Non-numeric MonthlyCharges rejected  (The CSV contains values that cannot be evaluated. MonthlyCharges must be numeric but is blank or non-numeric i)
+[PASS] Empty file rejected  (The uploaded file is empty.)
+[PASS] Header-only file rejected  (The CSV has a header but no data rows.)
+[PASS] Non-CSV filename rejected  (Only .csv files are supported. Received: data.xlsx)
+[PASS] Binary/garbage content rejected  (The file is not a readable text CSV (encoding error).)
+[PASS] App starts (welcome screen, no exceptions)
+[PASS] App evaluates bundled test CSV without exceptions or errors  (exceptions=0)
+[PASS] Overview shows record count and churn distribution
+[PASS] Comparison table lists all five models with all six metrics
+[PASS] Six metric cards for default model match Phase 3  ({'Accuracy': 0.8055, 'AUC': 0.842, 'Precision': 0.6572, 'Recall': 0.5588, 'F1': 0.604, 'MCC': 0.479})
+[PASS] Confusion-matrix counts update on model change  (LR ('1,135', '274') -> NB ('980', '429'))
+[PASS] Classification report updates on model change
+[PASS] No fit()/fit_transform() called while running the app  (15 methods guarded)
+[PASS] Model files unchanged
+[PASS] Original CSV unchanged
+[PASS] No fit() calls in app source
+31/31 checks passed
