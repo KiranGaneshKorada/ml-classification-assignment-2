@@ -1,0 +1,13 @@
+TRAIN vs TEST SCORES OF THE SAVED PIPELINES (no refitting)
+Train rows: 5634   Test rows: 1409
+
+                        Train Accuracy  Test Accuracy  Accuracy gap  Train F1  Test F1  F1 gap  Train MCC  Test MCC  MCC gap
+Model                                                                                                                       
+Logistic Regression             0.8055         0.8055       -0.0001    0.6000   0.6040 -0.0040     0.4763    0.4790  -0.0027
+Decision Tree                   0.9980         0.7246        0.2734    0.9963   0.4881  0.5082     0.9950    0.2999   0.6951
+K-Nearest Neighbors             0.8376         0.7573        0.0803    0.6802   0.5476  0.1326     0.5727    0.3818   0.1909
+Gaussian Naive Bayes            0.6965         0.6955        0.0010    0.5963   0.5941  0.0022     0.4308    0.4268   0.0040
+Support Vector Machine          0.8220         0.7899        0.0321    0.6170   0.5502  0.0669     0.5128    0.4232   0.0896
+
+Decision Tree: depth=22, leaves=1105
+SVM test AUC from decision_function scores: 0.7928 (predict_proba AUC: 0.7928)

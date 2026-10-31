@@ -1,0 +1,11 @@
+K-Nearest Neighbors - classification report (test set, n=1409)
+Positive class: Churn = Yes (1)
+
+              precision    recall  f1-score   support
+
+          No     0.8374    0.8309    0.8341      1035
+         Yes     0.5419    0.5535    0.5476       374
+
+    accuracy                         0.7573      1409
+   macro avg     0.6896    0.6922    0.6909      1409
+weighted avg     0.7590    0.7573    0.7581      1409

@@ -1,0 +1,131 @@
+TELCO CUSTOMER CHURN - PHASE 3 BASELINE MODEL RESULTS
+========================================================================
+Train rows: 5634 (churn rate 0.2654)   Test rows: 1409 (churn rate 0.2654)
+Split: 80/20 stratified, random_state=42 (Phase 2); test set = data/processed/test_data.csv
+Positive class: Churn = Yes (1). Precision/Recall/F1 use binary averaging, zero_division=0.
+AUC uses predict_proba() probabilities for the positive class.
+Environment: Python 3.9.6, scikit-learn 1.6.1
+
+MODEL CONFIGURATIONS (each wrapped as Pipeline(preprocessor -> classifier))
+------------------------------------------------------------------------
+Logistic Regression      LogisticRegression(max_iter=2000, random_state=42)
+Decision Tree            DecisionTreeClassifier(random_state=42)
+K-Nearest Neighbors      KNeighborsClassifier()
+Gaussian Naive Bayes     GaussianNB()
+Support Vector Machine   SVC(probability=True, random_state=42)
+
+METRICS ON HELD-OUT TEST SET (rounded to 4 d.p.)
+------------------------------------------------------------------------
+                        Accuracy     AUC  Precision  Recall      F1     MCC
+Model                                                                      
+Logistic Regression       0.8055  0.8420     0.6572  0.5588  0.6040  0.4790
+Decision Tree             0.7246  0.6509     0.4818  0.4947  0.4881  0.2999
+K-Nearest Neighbors       0.7573  0.7882     0.5419  0.5535  0.5476  0.3818
+Gaussian Naive Bayes      0.6955  0.8075     0.4597  0.8396  0.5941  0.4268
+Support Vector Machine    0.7899  0.7928     0.6373  0.4840  0.5502  0.4232
+
+RANKING (by MCC, ties broken by AUC)
+------------------------------------------------------------------------
+1. Logistic Regression      MCC=0.4790  AUC=0.8420  F1=0.6040
+2. Gaussian Naive Bayes     MCC=0.4268  AUC=0.8075  F1=0.5941
+3. Support Vector Machine   MCC=0.4232  AUC=0.7928  F1=0.5502
+4. K-Nearest Neighbors      MCC=0.3818  AUC=0.7882  F1=0.5476
+5. Decision Tree            MCC=0.2999  AUC=0.6509  F1=0.4881
+
+BEST MODEL PER METRIC
+------------------------------------------------------------------------
+Accuracy   Logistic Regression      0.8055
+AUC        Logistic Regression      0.8420
+Precision  Logistic Regression      0.6572
+Recall     Gaussian Naive Bayes     0.8396
+F1         Logistic Regression      0.6040
+MCC        Logistic Regression      0.4790
+
+Overall best baseline (by MCC): Logistic Regression
+
+CONFUSION MATRICES (rows = actual, columns = predicted)
+------------------------------------------------------------------------
+Logistic Regression
+            Predicted No  Predicted Yes
+Actual No            926            109
+Actual Yes           165            209
+
+Decision Tree
+            Predicted No  Predicted Yes
+Actual No            836            199
+Actual Yes           189            185
+
+K-Nearest Neighbors
+            Predicted No  Predicted Yes
+Actual No            860            175
+Actual Yes           167            207
+
+Gaussian Naive Bayes
+            Predicted No  Predicted Yes
+Actual No            666            369
+Actual Yes            60            314
+
+Support Vector Machine
+            Predicted No  Predicted Yes
+Actual No            932            103
+Actual Yes           193            181
+
+CLASSIFICATION REPORTS
+------------------------------------------------------------------------
+Logistic Regression
+              precision    recall  f1-score   support
+
+          No     0.8488    0.8947    0.8711      1035
+         Yes     0.6572    0.5588    0.6040       374
+
+    accuracy                         0.8055      1409
+   macro avg     0.7530    0.7268    0.7376      1409
+weighted avg     0.7979    0.8055    0.8002      1409
+
+Decision Tree
+              precision    recall  f1-score   support
+
+          No     0.8156    0.8077    0.8117      1035
+         Yes     0.4818    0.4947    0.4881       374
+
+    accuracy                         0.7246      1409
+   macro avg     0.6487    0.6512    0.6499      1409
+weighted avg     0.7270    0.7246    0.7258      1409
+
+K-Nearest Neighbors
+              precision    recall  f1-score   support
+
+          No     0.8374    0.8309    0.8341      1035
+         Yes     0.5419    0.5535    0.5476       374
+
+    accuracy                         0.7573      1409
+   macro avg     0.6896    0.6922    0.6909      1409
+weighted avg     0.7590    0.7573    0.7581      1409
+
+Gaussian Naive Bayes
+              precision    recall  f1-score   support
+
+          No     0.9174    0.6435    0.7564      1035
+         Yes     0.4597    0.8396    0.5941       374
+
+    accuracy                         0.6955      1409
+   macro avg     0.6885    0.7415    0.6753      1409
+weighted avg     0.7959    0.6955    0.7133      1409
+
+Support Vector Machine
+              precision    recall  f1-score   support
+
+          No     0.8284    0.9005    0.8630      1035
+         Yes     0.6373    0.4840    0.5502       374
+
+    accuracy                         0.7899      1409
+   macro avg     0.7329    0.6922    0.7066      1409
+weighted avg     0.7777    0.7899    0.7799      1409
+
+WARNINGS RAISED DURING FITTING
+------------------------------------------------------------------------
+Logistic Regression: none
+Decision Tree: none
+K-Nearest Neighbors: none
+Gaussian Naive Bayes: none
+Support Vector Machine: none

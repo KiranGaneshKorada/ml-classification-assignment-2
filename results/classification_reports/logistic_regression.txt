@@ -1,0 +1,11 @@
+Logistic Regression - classification report (test set, n=1409)
+Positive class: Churn = Yes (1)
+
+              precision    recall  f1-score   support
+
+          No     0.8488    0.8947    0.8711      1035
+         Yes     0.6572    0.5588    0.6040       374
+
+    accuracy                         0.8055      1409
+   macro avg     0.7530    0.7268    0.7376      1409
+weighted avg     0.7979    0.8055    0.8002      1409

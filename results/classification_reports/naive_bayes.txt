@@ -1,0 +1,11 @@
+Gaussian Naive Bayes - classification report (test set, n=1409)
+Positive class: Churn = Yes (1)
+
+              precision    recall  f1-score   support
+
+          No     0.9174    0.6435    0.7564      1035
+         Yes     0.4597    0.8396    0.5941       374
+
+    accuracy                         0.6955      1409
+   macro avg     0.6885    0.7415    0.6753      1409
+weighted avg     0.7959    0.6955    0.7133      1409

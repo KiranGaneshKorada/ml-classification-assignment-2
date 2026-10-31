@@ -1,0 +1,65 @@
+[PASS] Original CSV unchanged
+[PASS] Phase 2 test CSV unchanged
+[PASS] Train and test customers are disjoint  (train=5634, test=1409, shared=0)
+[PASS] Saved test CSV equals the Phase 2 split's test rows
+[PASS] Stored y_true equals test CSV labels
+[PASS] model_comparison.csv has 5 models x 6 metrics  (shape=(5, 6))
+
+--- Logistic Regression ---
+[PASS] Loads with joblib as Pipeline(preprocessor -> classifier)  (logistic_regression.joblib)
+[PASS] Classifier type and configuration as specified  (LogisticRegression(max_iter=2000, random_state=42))
+[PASS] Preprocessor fitted on the 5,634 training rows only
+[PASS] Classifier fitted on training rows (model-specific evidence)  (n_features_in_=46)
+[PASS] Loaded model reproduces stored predictions
+[PASS] Six metrics recomputed from loaded model match model_comparison.csv  (Accuracy=0.8055, AUC=0.8420, Precision=0.6572, Recall=0.5588, F1=0.6040, MCC=0.4790)
+[PASS] AUC computed from probabilities (not hard labels)  (proba AUC=0.8420 vs hard-label AUC=0.7268)
+[PASS] Retraining from scratch reproduces identical predictions
+[PASS] Classification report and confusion matrix saved and correct  (TN=926 FP=109 FN=165 TP=209)
+
+--- Decision Tree ---
+[PASS] Loads with joblib as Pipeline(preprocessor -> classifier)  (decision_tree.joblib)
+[PASS] Classifier type and configuration as specified  (DecisionTreeClassifier(random_state=42))
+[PASS] Preprocessor fitted on the 5,634 training rows only
+[PASS] Classifier fitted on training rows (model-specific evidence)  (5634)
+[PASS] Loaded model reproduces stored predictions
+[PASS] Six metrics recomputed from loaded model match model_comparison.csv  (Accuracy=0.7246, AUC=0.6509, Precision=0.4818, Recall=0.4947, F1=0.4881, MCC=0.2999)
+[PASS] AUC computed from probabilities (not hard labels)  (proba AUC=0.6509 vs hard-label AUC=0.6512)
+[PASS] Retraining from scratch reproduces identical predictions
+[PASS] Classification report and confusion matrix saved and correct  (TN=836 FP=199 FN=189 TP=185)
+
+--- K-Nearest Neighbors ---
+[PASS] Loads with joblib as Pipeline(preprocessor -> classifier)  (knn.joblib)
+[PASS] Classifier type and configuration as specified  (KNeighborsClassifier())
+[PASS] Preprocessor fitted on the 5,634 training rows only
+[PASS] Classifier fitted on training rows (model-specific evidence)  (5634)
+[PASS] Loaded model reproduces stored predictions
+[PASS] Six metrics recomputed from loaded model match model_comparison.csv  (Accuracy=0.7573, AUC=0.7882, Precision=0.5419, Recall=0.5535, F1=0.5476, MCC=0.3818)
+[PASS] AUC computed from probabilities (not hard labels)  (proba AUC=0.7882 vs hard-label AUC=0.6922)
+[PASS] Retraining from scratch reproduces identical predictions
+[PASS] Classification report and confusion matrix saved and correct  (TN=860 FP=175 FN=167 TP=207)
+
+--- Gaussian Naive Bayes ---
+[PASS] Loads with joblib as Pipeline(preprocessor -> classifier)  (naive_bayes.joblib)
+[PASS] Classifier type and configuration as specified  (GaussianNB())
+[PASS] Preprocessor fitted on the 5,634 training rows only
+[PASS] Classifier fitted on training rows (model-specific evidence)  ([4139.0, 1495.0])
+[PASS] Loaded model reproduces stored predictions
+[PASS] Six metrics recomputed from loaded model match model_comparison.csv  (Accuracy=0.6955, AUC=0.8075, Precision=0.4597, Recall=0.8396, F1=0.5941, MCC=0.4268)
+[PASS] AUC computed from probabilities (not hard labels)  (proba AUC=0.8075 vs hard-label AUC=0.7415)
+[PASS] Retraining from scratch reproduces identical predictions
+[PASS] Classification report and confusion matrix saved and correct  (TN=666 FP=369 FN=60 TP=314)
+
+--- Support Vector Machine ---
+[PASS] Loads with joblib as Pipeline(preprocessor -> classifier)  (svm.joblib)
+[PASS] Classifier type and configuration as specified  (SVC(probability=True, random_state=42))
+[PASS] Preprocessor fitted on the 5,634 training rows only
+[PASS] Classifier fitted on training rows (model-specific evidence)  (2645 support vectors)
+[PASS] Loaded model reproduces stored predictions
+[PASS] Six metrics recomputed from loaded model match model_comparison.csv  (Accuracy=0.7899, AUC=0.7928, Precision=0.6373, Recall=0.4840, F1=0.5502, MCC=0.4232)
+[PASS] AUC computed from probabilities (not hard labels)  (proba AUC=0.7928 vs hard-label AUC=0.6922)
+[PASS] Retraining from scratch reproduces identical predictions
+[PASS] Classification report and confusion matrix saved and correct  (TN=932 FP=103 FN=193 TP=181)
+[PASS] No metric-like numeric literals hardcoded in training/evaluation code  ({'train_models.py': [], 'evaluate_models.py': []})
+[PASS] Original CSV still unchanged after validation
+
+53/53 checks passed
