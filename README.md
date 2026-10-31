@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| **GitHub repository** | `<GITHUB_REPOSITORY_URL>` *(to be added after the repository is published)* |
-| **Live Streamlit app** | `<STREAMLIT_APP_URL>` *(to be added after deployment)* |
+| **GitHub repository** | [github.com/KiranGaneshKorada/ml-classification-assignment-2](https://github.com/KiranGaneshKorada/ml-classification-assignment-2) |
+| **Live Streamlit app** | [telco-churn-classifier-2026aj05797.streamlit.app](https://telco-churn-classifier-2026aj05797.streamlit.app/) |
 
 ---
 
@@ -253,7 +253,7 @@ test CSV**. Every result shown in the app is calculated live from the uploaded f
 ## 7. Project Structure
 
 ```
-telco_customer_churn_classification/
+ml-classification-assignment-2/
 ├── app.py                              # Streamlit dashboard (entry point)
 ├── requirements.txt                    # Pinned runtime dependencies
 ├── README.md
@@ -297,8 +297,8 @@ telco_customer_churn_classification/
 project was developed on Python 3.9.6 and also tested from a fresh clone on Python 3.12.
 
 ```bash
-git clone <GITHUB_REPOSITORY_URL>
-cd telco_customer_churn_classification
+git clone https://github.com/KiranGaneshKorada/ml-classification-assignment-2.git
+cd ml-classification-assignment-2
 
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
@@ -310,7 +310,9 @@ pickled scikit-learn models should be loaded with the same scikit-learn version 
 
 ## 9. Running the Application
 
-From the project folder, with the virtual environment activated:
+The deployed app is available at
+[telco-churn-classifier-2026aj05797.streamlit.app](https://telco-churn-classifier-2026aj05797.streamlit.app/) and
+needs no installation. To run it locally instead, from the project folder with the virtual environment activated:
 
 ```bash
 streamlit run app.py
@@ -363,8 +365,13 @@ because the app does not need it.
 
 ## 12. Deployment (Streamlit Community Cloud)
 
+The app is deployed on Streamlit Community Cloud at
+[telco-churn-classifier-2026aj05797.streamlit.app](https://telco-churn-classifier-2026aj05797.streamlit.app/).
+
+To deploy your own copy:
+
 1. Push this repository to GitHub, including `model/*.joblib` and `data/processed/test_data.csv`.
 2. On [share.streamlit.io](https://share.streamlit.io), create a new app from the repository, then choose the
    branch and set the main file path to `app.py`.
 3. Under **Advanced settings**, choose **Python 3.12** (any of 3.9–3.12 works with the pinned versions).
-4. Deploy, then replace the live-app placeholder at the top of this README with the app's URL.
+4. Deploy.
