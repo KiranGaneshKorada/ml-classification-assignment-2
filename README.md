@@ -1,14 +1,5 @@
 # Telco Customer Churn Prediction
 
-**Machine Learning Classification Dashboard | M.Tech AIML – Machine Learning Assignment 2**
-
-| | |
-|---|---|
-| **GitHub repository** | [github.com/KiranGaneshKorada/ml-classification-assignment-2](https://github.com/KiranGaneshKorada/ml-classification-assignment-2) |
-| **Live Streamlit app** | [telco-churn-classifier-2026aj05797.streamlit.app](https://telco-churn-classifier-2026aj05797.streamlit.app/) |
-
----
-
 ## 1. Problem Statement
 
 A telecom operator loses revenue every time a subscriber cancels the service ("churns"). Retaining an
@@ -32,9 +23,6 @@ application that evaluates and compares all five saved models on any labelled te
 | Task type | **Binary classification**, positive class = `Churn = Yes` (encoded as 1) |
 | Class balance | No: 5,174 (73.46%) · Yes: 1,869 (26.54%), a moderate imbalance of about 2.8 : 1 |
 
-The assignment requires at least 500 instances and 12 input features; the dataset has 7,043 instances and 19
-input features (excluding the identifier and the target).
-
 ### Input features
 
 | Group | Features | Type |
@@ -45,20 +33,69 @@ input features (excluding the identifier and the target).
 | Services | `PhoneService`, `MultipleLines`, `InternetService` (DSL / Fiber optic / No), `OnlineSecurity`, `OnlineBackup`, `DeviceProtection`, `TechSupport`, `StreamingTV`, `StreamingMovies` | Categorical |
 | Billing | `MonthlyCharges`, `TotalCharges` | Numerical |
 
-That gives **3 numerical** and **16 categorical** features. `SeniorCitizen` is stored as 0/1 but is treated as a
-categorical yes/no flag.
+## 3. Models Used
 
-### Data-quality findings (from inspection of the actual CSV)
+All five classifiers use their default settings, apart from the parameters listed below. Each is wrapped in the
+same pipeline, `Pipeline([("preprocessor", build_preprocessor()), ("classifier", <model>)])`, and trained on
+the identical 5,634-row training split. No hyperparameter tuning was performed; these are baseline models.
 
-- `TotalCharges` is stored as text. **11 values are blank strings (`" "`)**. All 11 belong to customers with
-  `tenure = 0` who have not been billed yet. pandas reports zero nulls because the blanks are strings, not NaN.
-- No other missing values, no fully duplicated rows and no duplicate `customerID`s.
-- 22 rows are identical to another row once `customerID` is ignored. These are plausible distinct customers
-  with simple profiles (e.g. 1-month, phone-only plans), so they were kept.
-- The values "No internet service" and "No phone service" repeat information already given by
-  `InternetService = No` and `PhoneService = No`.
+| # | ML Model Name | Configuration |
+|---|---|---|
+| 1 | Logistic Regression | `LogisticRegression(max_iter=2000, random_state=42)` |
+| 2 | Decision Tree | `DecisionTreeClassifier(random_state=42)` |
+| 3 | K-Nearest Neighbors (kNN) | `KNeighborsClassifier(n_neighbors=5)` |
+| 4 | Gaussian Naive Bayes | `GaussianNB()` |
+| 5 | Support Vector Machine (SVM) | `SVC(probability=True, random_state=42)` (RBF kernel) |
 
-## 3. Data Preprocessing
+**Evaluation:**
+- All models are scored on the same 1,409 held-out test rows.
+- The positive class is `Churn = Yes`. Precision, recall and F1 use binary averaging with `zero_division=0`.
+- **AUC is computed from `predict_proba()` probabilities.** The other metrics use `predict()`.
+- MCC is the Matthews correlation coefficient.
+
+### 3.1 Comparison table: evaluation metrics on the test set
+
+| ML Model Name | Accuracy | AUC | Precision | Recall | F1 | MCC |
+|---|---|---|---|---|---|---|
+| **Logistic Regression** | **0.8055** | **0.8420** | **0.6572** | 0.5588 | **0.6040** | **0.4790** |
+| Decision Tree | 0.7246 | 0.6509 | 0.4818 | 0.4947 | 0.4881 | 0.2999 |
+| kNN | 0.7573 | 0.7882 | 0.5419 | 0.5535 | 0.5476 | 0.3818 |
+| Gaussian Naive Bayes | 0.6955 | 0.8075 | 0.4597 | **0.8396** | 0.5941 | 0.4268 |
+| SVM | 0.7899 | 0.7928 | 0.6373 | 0.4840 | 0.5502 | 0.4232 |
+
+Bold marks the best value in each column. Source: [`src/results/model_comparison.csv`](src/results/model_comparison.csv).
+The full classification reports are in [`src/results/classification_reports/`](src/results/classification_reports/) and a
+readable summary is in [`src/results/metrics_summary.txt`](src/results/metrics_summary.txt).
+
+### 3.2 Confusion matrices (test set: 1,035 stayed, 374 churned)
+
+| ML Model Name | True negatives | False positives (false alarms) | False negatives (missed churners) | True positives |
+|---|---|---|---|---|
+| Logistic Regression | 926 | 109 | 165 | 209 |
+| Decision Tree | 836 | 199 | 189 | 185 |
+| kNN | 860 | 175 | 167 | 207 |
+| Gaussian Naive Bayes | 666 | 369 | **60** | **314** |
+| SVM | 932 | **103** | 193 | 181 |
+
+How to read this:
+- For churn, a **false negative** is a customer who leaves without being flagged.
+- A **false positive** is a loyal customer who would receive an unnecessary retention offer.
+- The models trade these two errors differently: SVM raises the fewest false alarms but misses the most churners,
+  while Gaussian Naive Bayes misses the fewest churners at the cost of the most false alarms.
+
+Heatmaps for each model are in [`src/results/confusion_matrices/`](src/results/confusion_matrices/).
+
+### 3.3 Observations on each model
+
+| ML Model Name | Observation about model performance |
+|---|---|
+| **Logistic Regression** | Best on five of the six metrics: accuracy 0.8055, AUC 0.8420, precision 0.6572, F1 0.6040 and MCC 0.4790. Its training and test scores are almost identical (MCC 0.4763 vs 0.4790), so this split shows no sign of overfitting. The EDA found that churn is driven mostly by a few strong, largely additive factors (contract, tenure, internet type, payment method), which suits a linear model on one-hot and scaled features. Its main weakness is recall: at the default 0.5 threshold it misses 165 of the 374 churners (recall 0.5588). |
+| **Decision Tree** | Weakest model by AUC, F1 and MCC (MCC 0.2999, AUC 0.6509), and second-lowest on accuracy, precision and recall. With no depth limit the tree grew to depth 22 with 1,105 leaves and **clearly overfits**: training accuracy 0.9980 vs test accuracy 0.7246, and training MCC 0.9950 vs test MCC 0.2999. Because its leaves are almost pure, its predicted probabilities are close to 0 or 1, which explains the low AUC. Limiting depth or the minimum leaf size would be the obvious next step; it was not done here because these are untuned baselines. |
+| **kNN** | Middle of the field (MCC 0.3818, AUC 0.7882) with balanced precision and recall (0.5419 / 0.5535). It shows a moderate train–test gap (MCC 0.5727 vs 0.3818). Distance on 46 mostly binary one-hot dimensions is a fairly coarse similarity measure, and k = 5 was not tuned. It also stores all 5,634 training rows, so it is the largest model file (about 2.1 MB). |
+| **Gaussian Naive Bayes** | Has by far the **highest recall (0.8396)**: it catches 314 of 374 churners and misses only 60. The cost is 369 false alarms, giving the lowest precision (0.4597) and lowest accuracy (0.6955). Its ranking quality is still good (AUC 0.8075, second best), and it is second by MCC (0.4268). Its assumptions are only loosely met: the features are not independent (TotalCharges is strongly correlated with tenure), and Gaussian likelihoods are applied to 0/1 one-hot columns. Training and test scores are very close. |
+| **SVM** | Second-highest accuracy (0.7899) and precision (0.6373), but the **lowest recall (0.4840)**: it is the most conservative model, with the fewest false alarms (103) and the most missed churners (193). AUC is 0.7928; the raw decision-function scores give the same AUC, so this is not an effect of the probability calibration. MCC 0.4232 puts it just behind Naive Bayes. The RBF kernel's default `C` and `gamma` were not tuned. |
+
+## 4. Data Preprocessing
 
 All preprocessing lives in [`src/preprocessing.py`](src/preprocessing.py) and is packaged as a scikit-learn
 `Pipeline`. The same pipeline is saved inside every model file and reused by the Streamlit app.
@@ -89,7 +126,7 @@ All preprocessing lives in [`src/preprocessing.py`](src/preprocessing.py) and is
 5. **No leakage:** the scaler and encoder are fitted only on the training rows, as the first step of each model
    pipeline. Validation confirms that every fitted scaler saw exactly 5,634 rows.
 
-## 4. Exploratory Data Analysis
+## 5. Exploratory Data Analysis
 
 The full analysis with charts is in [`src/notebooks/exploratory_analysis.ipynb`](src/notebooks/exploratory_analysis.ipynb).
 Figures are exported to [`src/results/eda/`](src/results/eda/). The analysis uses all 7,043 rows for description only;
@@ -109,112 +146,6 @@ nothing is fitted in the notebook.
 <p align="center">
   <img src="src/results/eda/02_churn_by_contract.png" alt="Churn rate by contract type" width="640">
 </p>
-
-## 5. Models Used
-
-All five classifiers use their default settings, apart from the parameters listed below. Each is wrapped in the
-same pipeline, `Pipeline([("preprocessor", build_preprocessor()), ("classifier", <model>)])`, and trained on
-the identical 5,634-row training split. No hyperparameter tuning was performed; these are baseline models.
-
-| # | ML Model Name | Configuration |
-|---|---|---|
-| 1 | Logistic Regression | `LogisticRegression(max_iter=2000, random_state=42)` |
-| 2 | Decision Tree | `DecisionTreeClassifier(random_state=42)` |
-| 3 | K-Nearest Neighbors (kNN) | `KNeighborsClassifier(n_neighbors=5)` |
-| 4 | Gaussian Naive Bayes | `GaussianNB()` |
-| 5 | Support Vector Machine (SVM) | `SVC(probability=True, random_state=42)` (RBF kernel) |
-
-**Evaluation:**
-- All models are scored on the same 1,409 held-out test rows.
-- The positive class is `Churn = Yes`. Precision, recall and F1 use binary averaging with `zero_division=0`.
-- **AUC is computed from `predict_proba()` probabilities.** The other metrics use `predict()`.
-- MCC is the Matthews correlation coefficient.
-
-### 5.1 Comparison table: evaluation metrics on the test set
-
-| ML Model Name | Accuracy | AUC | Precision | Recall | F1 | MCC |
-|---|---|---|---|---|---|---|
-| **Logistic Regression** | **0.8055** | **0.8420** | **0.6572** | 0.5588 | **0.6040** | **0.4790** |
-| Decision Tree | 0.7246 | 0.6509 | 0.4818 | 0.4947 | 0.4881 | 0.2999 |
-| kNN | 0.7573 | 0.7882 | 0.5419 | 0.5535 | 0.5476 | 0.3818 |
-| Gaussian Naive Bayes | 0.6955 | 0.8075 | 0.4597 | **0.8396** | 0.5941 | 0.4268 |
-| SVM | 0.7899 | 0.7928 | 0.6373 | 0.4840 | 0.5502 | 0.4232 |
-
-Bold marks the best value in each column. Source: [`src/results/model_comparison.csv`](src/results/model_comparison.csv).
-The full classification reports are in [`src/results/classification_reports/`](src/results/classification_reports/) and a
-readable summary is in [`src/results/metrics_summary.txt`](src/results/metrics_summary.txt).
-
-### 5.2 Confusion matrices (test set: 1,035 stayed, 374 churned)
-
-| ML Model Name | True negatives | False positives (false alarms) | False negatives (missed churners) | True positives |
-|---|---|---|---|---|
-| Logistic Regression | 926 | 109 | 165 | 209 |
-| Decision Tree | 836 | 199 | 189 | 185 |
-| kNN | 860 | 175 | 167 | 207 |
-| Gaussian Naive Bayes | 666 | 369 | **60** | **314** |
-| SVM | 932 | **103** | 193 | 181 |
-
-How to read this:
-- For churn, a **false negative** is a customer who leaves without being flagged.
-- A **false positive** is a loyal customer who would receive an unnecessary retention offer.
-- The models trade these two errors differently: SVM raises the fewest false alarms but misses the most churners,
-  while Gaussian Naive Bayes misses the fewest churners at the cost of the most false alarms.
-
-Heatmaps for each model are in [`src/results/confusion_matrices/`](src/results/confusion_matrices/).
-
-### 5.3 Training vs. test scores
-
-To check for overfitting, the saved pipelines were also scored on their own training split, without any
-refitting ([`src/train_test_gap.py`](src/train_test_gap.py) → [`src/results/train_test_gap.txt`](src/results/train_test_gap.txt)).
-
-| ML Model Name | Train Accuracy | Test Accuracy | Train MCC | Test MCC |
-|---|---|---|---|---|
-| Logistic Regression | 0.8055 | 0.8055 | 0.4763 | 0.4790 |
-| Decision Tree | 0.9980 | 0.7246 | 0.9950 | 0.2999 |
-| kNN | 0.8376 | 0.7573 | 0.5727 | 0.3818 |
-| Gaussian Naive Bayes | 0.6965 | 0.6955 | 0.4308 | 0.4268 |
-| SVM | 0.8220 | 0.7899 | 0.5128 | 0.4232 |
-
-A large gap between training and test scores is clear evidence of overfitting. A small gap on a single split
-does not prove that a model generalises well; it only means this comparison shows no overfitting.
-
-### 5.4 Observations on each model
-
-| ML Model Name | Observation about model performance |
-|---|---|
-| **Logistic Regression** | Best on five of the six metrics: accuracy 0.8055, AUC 0.8420, precision 0.6572, F1 0.6040 and MCC 0.4790. Its training and test scores are almost identical (MCC 0.4763 vs 0.4790), so this split shows no sign of overfitting. The EDA found that churn is driven mostly by a few strong, largely additive factors (contract, tenure, internet type, payment method), which suits a linear model on one-hot and scaled features. Its main weakness is recall: at the default 0.5 threshold it misses 165 of the 374 churners (recall 0.5588). |
-| **Decision Tree** | Weakest model by AUC, F1 and MCC (MCC 0.2999, AUC 0.6509), and second-lowest on accuracy, precision and recall. With no depth limit the tree grew to depth 22 with 1,105 leaves and **clearly overfits**: training accuracy 0.9980 vs test accuracy 0.7246, and training MCC 0.9950 vs test MCC 0.2999. Because its leaves are almost pure, its predicted probabilities are close to 0 or 1, which explains the low AUC. Limiting depth or the minimum leaf size would be the obvious next step; it was not done here because these are untuned baselines. |
-| **kNN** | Middle of the field (MCC 0.3818, AUC 0.7882) with balanced precision and recall (0.5419 / 0.5535). It shows a moderate train–test gap (MCC 0.5727 vs 0.3818). Distance on 46 mostly binary one-hot dimensions is a fairly coarse similarity measure, and k = 5 was not tuned. It also stores all 5,634 training rows, so it is the largest model file (about 2.1 MB). |
-| **Gaussian Naive Bayes** | Has by far the **highest recall (0.8396)**: it catches 314 of 374 churners and misses only 60. The cost is 369 false alarms, giving the lowest precision (0.4597) and lowest accuracy (0.6955). Its ranking quality is still good (AUC 0.8075, second best), and it is second by MCC (0.4268). Its assumptions are only loosely met: the features are not independent (TotalCharges is strongly correlated with tenure), and Gaussian likelihoods are applied to 0/1 one-hot columns. Training and test scores are very close. |
-| **SVM** | Second-highest accuracy (0.7899) and precision (0.6373), but the **lowest recall (0.4840)**: it is the most conservative model, with the fewest false alarms (103) and the most missed churners (193). AUC is 0.7928; the raw decision-function scores give the same AUC, so this is not an effect of the probability calibration. MCC 0.4232 puts it just behind Naive Bayes. The RBF kernel's default `C` and `gamma` were not tuned. |
-
-### 5.5 Overall best model
-
-**Logistic Regression is the overall baseline winner.** It has the highest MCC (0.4790) and is best on five of the
-six metrics (accuracy, AUC, precision, F1 and MCC).
-
-MCC is used as the main ranking metric because it uses all four cells of the confusion matrix and remains
-informative under class imbalance. Accuracy can look good simply by predicting the majority class. The ranking by
-MCC is:
-
-1. Logistic Regression (0.4790)
-2. Gaussian Naive Bayes (0.4268)
-3. SVM (0.4232)
-4. kNN (0.3818)
-5. Decision Tree (0.2999)
-
-**Gaussian Naive Bayes has the highest recall (0.8396).** If missing a churner is much more costly than
-contacting a customer who would have stayed, its recall may matter more than its lower precision. The best choice
-therefore depends on the relative cost of the two error types.
-
-### 5.6 Limitations
-
-- These are untuned baselines: default hyperparameters, the default 0.5 decision threshold and no class weighting.
-- All results come from a single stratified 80/20 split. Small differences, such as Naive Bayes vs SVM on MCC
-  (0.4268 vs 0.4232), may not be meaningful without cross-validation or repeated splits.
-- For SVM, `predict()` uses the SVM's own decision boundary while `predict_proba()` comes from a separately fitted
-  calibration, so the two can disagree for a few rows. This is standard scikit-learn behaviour; threshold-based
-  metrics use `predict()`.
 
 ## 6. Streamlit Application
 
@@ -379,11 +310,3 @@ because the app does not need it.
 
 The app is deployed on Streamlit Community Cloud at
 [telco-churn-classifier-2026aj05797.streamlit.app](https://telco-churn-classifier-2026aj05797.streamlit.app/).
-
-To deploy your own copy:
-
-1. Push this repository to GitHub, including `model/*.joblib` and `test_data.csv`.
-2. On [share.streamlit.io](https://share.streamlit.io), create a new app from the repository, then choose the
-   branch and set the main file path to `app.py`.
-3. Under **Advanced settings**, choose **Python 3.12** (any of 3.9–3.12 works with the pinned versions).
-4. Deploy.
