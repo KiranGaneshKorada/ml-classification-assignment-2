@@ -3,6 +3,10 @@ validating uploaded CSVs, and evaluating every model on the uploaded data.
 
 Nothing here fits a model or transformer: saved pipelines are only used for
 predict() / predict_proba() / transform().
+
+Input compatibility fixes (encodings, label capitalisation, SeniorCitizen spellings)
+live here, not in src/preprocessing.py: the saved pipelines call
+preprocessing.clean_features(), so changing it would change the saved models.
 """
 import io
 import warnings
@@ -17,7 +21,8 @@ from src.evaluate_models import (
     positive_class_proba,
 )
 from src.preprocessing import (
-    CATEGORICAL_FEATURES, FEATURE_COLUMNS, ID_COLUMN, TARGET, TARGET_MAPPING, clean_features,
+    CATEGORICAL_FEATURES, FEATURE_COLUMNS, ID_COLUMN, NUMERICAL_FEATURES, TARGET, TARGET_MAPPING,
+    clean_features,
 )
 from src.train_models import MODEL_DIR, MODEL_NAMES, RANKING_METRICS
 
@@ -42,6 +47,13 @@ MODEL_CONFIGS = {
     "svm": "SVC(probability=True, random_state=42)",
 }
 LABEL_NAMES = {v: k for k, v in TARGET_MAPPING.items()}  # 0 -> "No", 1 -> "Yes"
+# Largest magnitude accepted for tenure and charges. Larger values are not plausible and
+# overflow inside the models (the decision tree works in float32).
+MAX_ABS_NUMERIC = 1e15
+# SeniorCitizen is 0/1 in the training data; equivalent spellings map to those categories.
+SENIOR_CITIZEN_VALUES = {"0": "0", "1": "1", "0.0": "0", "1.0": "1", "no": "0", "yes": "1",
+                         "false": "0", "true": "1", "n": "0", "y": "1"}
+OTHER_DELIMITERS = {";": "semicolons (;)", "\t": "tabs", "|": "pipes (|)"}
 
 
 class DataValidationError(ValueError):
@@ -69,76 +81,151 @@ def load_models(model_dir=MODEL_DIR):
 
 
 def read_csv_bytes(data, filename="upload.csv"):
-    """Parse uploaded bytes into a DataFrame, raising DataValidationError on bad files."""
+    """Parse uploaded bytes into a DataFrame. Returns (df, notes).
+
+    UTF-8 (with or without a BOM) is tried first, then Latin-1. Raises
+    DataValidationError for binary files, other delimiters, duplicate column names
+    and rows that do not match the header.
+    """
     if not str(filename).lower().endswith(".csv"):
         raise DataValidationError("Only .csv files are supported.", [f"Received: {filename}"])
     if not data or not data.strip():
         raise DataValidationError("The uploaded file is empty.")
+    if b"\x00" in data:
+        raise DataValidationError(
+            "The file is not a plain-text CSV.",
+            ["It contains binary data, e.g. an Excel workbook or a UTF-16 export. "
+             "Save it as 'CSV UTF-8 (comma delimited)' and upload it again."])
+    notes = []
     try:
-        df = pd.read_csv(io.BytesIO(data))
+        data.decode("utf-8")
+        encoding = "utf-8"
     except UnicodeDecodeError:
-        raise DataValidationError("The file is not a readable text CSV (encoding error).") from None
-    except (EmptyDataError, ParserError) as exc:
-        raise DataValidationError("The file could not be parsed as CSV.", [str(exc)]) from None
+        encoding = "latin-1"
+        notes.append(("info", "The file is not valid UTF-8, so it was read as Latin-1 (ISO-8859-1) text."))
+
+    header = _parse_csv(data, encoding, header=None, nrows=1, dtype=str, keep_default_na=False)
+    names = [str(c).strip() for c in header.iloc[0]] if len(header) else []
+    if len(names) == 1:
+        for sep, label in OTHER_DELIMITERS.items():
+            if sep in names[0]:
+                raise DataValidationError(
+                    f"The file appears to separate columns with {label}, not commas.",
+                    ["Save it as a comma-separated CSV (in Excel: 'CSV UTF-8 (comma delimited)') "
+                     "and upload it again."])
+    counts = pd.Series([n for n in names if n], dtype=object).value_counts()
+    duplicated = counts[counts > 1]
+    if not duplicated.empty:
+        raise DataValidationError(
+            "The CSV has duplicate column names.",
+            [f"'{name}' appears {count} times" for name, count in duplicated.items()]
+            + ["Names are compared after removing leading and trailing spaces; each column must appear once."])
+
+    df = _parse_csv(data, encoding)
+    if not isinstance(df.index, pd.RangeIndex):
+        # pandas uses the first column as the index when every row has one value more than the header.
+        raise DataValidationError(
+            "The data rows have more values than the header has column names.",
+            ["Check for a trailing comma at the end of each row or a missing column name in the header."])
     df.columns = [str(c).strip() for c in df.columns]
-    return df
+    return df, notes
+
+
+def _parse_csv(data, encoding, **kwargs):
+    try:
+        return pd.read_csv(io.BytesIO(data), encoding=encoding, **kwargs)
+    except (EmptyDataError, ParserError) as exc:
+        detail = str(exc).strip().replace("Error tokenizing data. C error: ", "")
+        raise DataValidationError(
+            "The file could not be parsed as CSV.",
+            [detail, "Every row must have the same number of comma-separated values; "
+                     "values that contain commas must be quoted."]) from None
 
 
 def validate_dataset(df):
     """Check columns, labels and numeric fields. Returns (X, y, notes).
 
     `notes` is a list of (level, message) tuples with level "info" or "warning".
+    Values are never changed except where noted: Churn labels are matched
+    case-insensitively and SeniorCitizen spellings are mapped to the 0/1 categories
+    the models were trained on.
     """
     if df.empty:
         raise DataValidationError("The CSV has a header but no data rows.")
 
     missing = [c for c in FEATURE_COLUMNS + [TARGET] if c not in df.columns]
     if missing:
+        by_lower = {str(c).lower(): c for c in df.columns}
+        hints = [f"Found '{by_lower[c.lower()]}': column names are case-sensitive, so rename it to '{c}'."
+                 for c in missing if c.lower() in by_lower]
         raise DataValidationError(
             f"The CSV is missing {len(missing)} required column(s).",
-            [f"Missing: {', '.join(missing)}",
+            [f"Missing: {', '.join(missing)}", *hints,
              "Required: the 19 input features plus the Churn target (customerID is optional)."])
 
     problems, notes = [], []
-    labels = df[TARGET].astype(str).str.strip()
-    blank_labels = df[TARGET].isna() | labels.eq("")
-    unexpected = sorted(set(labels[~blank_labels]) - set(TARGET_MAPPING))
+    label_text = df[TARGET].astype(str).str.strip()
+    blank_labels = df[TARGET].isna() | label_text.eq("")
+    labels = label_text.str.lower().map({k.lower(): k for k in TARGET_MAPPING})
+    unexpected = sorted(set(label_text[~blank_labels & labels.isna()]))
     if blank_labels.any():
         problems.append(f"Churn is blank in {int(blank_labels.sum())} row(s) "
                         f"(e.g. data rows {_row_numbers(blank_labels)}).")
     if unexpected:
         problems.append(f"Unexpected Churn labels: {', '.join(map(repr, unexpected[:10]))}. "
-                        "Allowed values are exactly 'Yes' and 'No'.")
+                        "Allowed values are Yes and No (any capitalisation).")
 
-    for col in ("tenure", "MonthlyCharges"):
-        invalid = pd.to_numeric(df[col], errors="coerce").isna()
-        if invalid.any():
+    numbers = {}
+    for col in NUMERICAL_FEATURES:
+        values = pd.to_numeric(df[col], errors="coerce")
+        blank = df[col].isna() | df[col].astype(str).str.strip().eq("")
+        if col == "TotalCharges":  # blank TotalCharges is allowed (not yet billed)
+            invalid = values.isna() & ~blank
+            if invalid.any():
+                problems.append(f"TotalCharges is non-numeric in {int(invalid.sum())} row(s) "
+                                f"(e.g. data rows {_row_numbers(invalid)}).")
+        elif values.isna().any():
+            invalid = values.isna()
             problems.append(f"{col} must be numeric but is blank or non-numeric in "
                             f"{int(invalid.sum())} row(s) (e.g. data rows {_row_numbers(invalid)}).")
-
-    total_text = df["TotalCharges"].astype(str).str.strip()
-    total_blank = df["TotalCharges"].isna() | total_text.eq("")
-    total_invalid = pd.to_numeric(df["TotalCharges"], errors="coerce").isna() & ~total_blank
-    if total_invalid.any():
-        problems.append(f"TotalCharges is non-numeric in {int(total_invalid.sum())} row(s) "
-                        f"(e.g. data rows {_row_numbers(total_invalid)}).")
+        too_large = values.notna() & ~(values.abs() <= MAX_ABS_NUMERIC)
+        if too_large.any():
+            problems.append(f"{col} has infinite or implausibly large values (beyond ±{MAX_ABS_NUMERIC:.0e}) in "
+                            f"{int(too_large.sum())} row(s) (e.g. data rows {_row_numbers(too_large)}).")
+        numbers[col] = values
 
     if problems:
         raise DataValidationError("The CSV contains values that cannot be evaluated.", problems)
 
-    if total_blank.any():
-        tenure = pd.to_numeric(df["tenure"], errors="coerce")
-        notes.append(("info", f"{int(total_blank.sum())} blank TotalCharges value(s) were set to 0 by the "
-                              "standard preprocessing rule (blank TotalCharges = not yet billed)."))
-        if (total_blank & tenure.gt(0)).any():
-            notes.append(("warning", f"{int((total_blank & tenure.gt(0)).sum())} blank TotalCharges row(s) "
-                                     "have tenure > 0, so imputing 0 may understate their charges."))
+    if (label_text[~blank_labels] != labels[~blank_labels]).any():
+        notes.append(("info", "Churn labels were matched without regard to capitalisation (e.g. 'yes' = 'Yes')."))
+    # Blank TotalCharges are set to 0 by clean_features() (not yet billed); only warn when that looks wrong.
+    suspicious_blank = numbers["TotalCharges"].isna() & numbers["tenure"].gt(0)
+    if suspicious_blank.any():
+        notes.append(("warning", f"{int(suspicious_blank.sum())} blank TotalCharges row(s) have tenure > 0, "
+                                 "so the standard rule of treating them as 0 may understate their charges."))
+    for col, values in numbers.items():
+        negative = values.lt(0)
+        if negative.any():
+            notes.append(("warning", f"{col} is negative in {int(negative.sum())} row(s) (e.g. data rows "
+                                     f"{_row_numbers(negative)}). Negative values are not valid for this field; "
+                                     "they were evaluated unchanged, so please check the data."))
     extra = [c for c in df.columns if c not in FEATURE_COLUMNS + [TARGET, ID_COLUMN]]
     if extra:
         notes.append(("info", f"Ignored {len(extra)} extra column(s): {', '.join(extra[:8])}"
                               f"{' …' if len(extra) > 8 else ''}"))
 
-    return df[FEATURE_COLUMNS].copy(), labels.map(TARGET_MAPPING).astype(int), notes
+    X = df[FEATURE_COLUMNS].copy()
+    senior_text = X["SeniorCitizen"].astype(str).str.strip()
+    senior = senior_text.str.lower().map(SENIOR_CITIZEN_VALUES)
+    converted = senior.notna() & senior_text.ne(senior)
+    if converted.any():
+        X["SeniorCitizen"] = senior.where(senior.notna(), X["SeniorCitizen"])
+        examples = ", ".join(map(repr, sorted(set(senior_text[converted]))[:4]))
+        notes.append(("info", f"SeniorCitizen values {examples} were read as the training categories "
+                              "0 (No) and 1 (Yes)."))
+
+    return X, labels.map(TARGET_MAPPING).astype(int), notes
 
 
 def find_unseen_categories(X, model):
@@ -194,12 +281,14 @@ def predictions_table(df, y, details):
 
 def evaluate_csv(data, filename, models):
     """Full upload flow: read -> validate -> evaluate all models. Returns a result dict."""
-    df = read_csv_bytes(data, filename)
-    X, y, notes = validate_dataset(df)
+    df, notes = read_csv_bytes(data, filename)
+    X, y, validation_notes = validate_dataset(df)
+    notes += validation_notes
     unseen = find_unseen_categories(X, next(iter(models.values())))
     for col, (count, examples) in unseen.items():
+        shown = ", ".join("(blank)" if v in ("", "nan") else repr(v) for v in examples)
         notes.append(("warning", f"{col}: {count} row(s) with categories not seen in training "
-                                 f"({', '.join(map(repr, examples))}); they are encoded as all zeros."))
+                                 f"({shown}); they are encoded as all zeros."))
     if y.nunique() < 2:
         notes.append(("warning", f"Only one Churn class ('{LABEL_NAMES[int(y.iloc[0])]}') is present: "
                                  "AUC is undefined and MCC is 0 by definition."))

@@ -79,17 +79,22 @@ def confusion_matrix_frame(y_true, y_pred):
                         columns=[f"Predicted {name}" for name in CLASS_NAMES])
 
 
-def plot_confusion_matrix(cm_frame, title, path=None):
-    """Draw counts plus the share of each actual class; save to path if given."""
+def plot_confusion_matrix(cm_frame, title, path=None, cell_names=False):
+    """Draw counts plus the share of each actual class; save to path if given.
+
+    cell_names=True also labels the cells TN / FP / FN / TP (used by the app).
+    """
     counts = cm_frame.to_numpy()
     row_share = counts / counts.sum(axis=1, keepdims=True)
     cmap = LinearSegmentedColormap.from_list("blue_ramp", ["#f0f6fe", "#86b6ef", "#184f95"])
+    names = [["TN", "FP"], ["FN", "TP"]]
 
     fig, ax = plt.subplots(figsize=(5.6, 4.8), facecolor="#fcfcfb")
     ax.imshow(row_share, cmap=cmap, vmin=0, vmax=1)
     for i in range(2):
         for j in range(2):
-            ax.text(j, i, f"{counts[i, j]:,}\n({row_share[i, j]:.1%} of actual)",
+            prefix = f"{names[i][j]}\n" if cell_names else ""
+            ax.text(j, i, f"{prefix}{counts[i, j]:,}\n({row_share[i, j]:.1%} of actual)",
                     ha="center", va="center", fontsize=11,
                     color="white" if row_share[i, j] > 0.55 else "#0b0b0b")
     ax.set_xticks([0, 1], ["No (stay)", "Yes (churn)"])

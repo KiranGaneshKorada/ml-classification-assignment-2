@@ -224,23 +224,32 @@ test CSV**. Every result shown in the app is calculated live from the uploaded f
 **Features:**
 - **CSV upload** (`.csv` only), plus a switch to use the bundled `data/processed/test_data.csv` and a button to
   download it as a sample.
-- **Input validation with clear error messages.** The app reports:
-  - missing columns, by name;
+- **Input validation with clear error messages.** The app rejects, with an explanation:
+  - missing columns, by name (with a hint when only the capitalisation differs);
+  - duplicate column names, including duplicates that differ only by surrounding spaces;
   - blank or unexpected `Churn` labels;
-  - non-numeric `tenure`, `MonthlyCharges` or `TotalCharges`;
-  - empty, header-only or unreadable files.
+  - blank or non-numeric `tenure` / `MonthlyCharges`, non-numeric `TotalCharges`, and infinite or implausibly
+    large numbers (beyond ±1e15);
+  - empty, header-only or binary files (e.g. Excel workbooks, UTF-16 exports), files separated by semicolons,
+    tabs or pipes, and rows whose number of values does not match the header.
 
-  Blank `TotalCharges` values are handled by the standard preprocessing rule. Unseen category values and extra
-  columns produce a warning instead of an error. `customerID` is optional.
-- **Dataset overview:** file name, number of records and the actual churn distribution.
-- **Model comparison:** all six metrics for all five models, with the best model by MCC (ties broken by AUC)
-  highlighted and a bar chart for any chosen metric.
-- **Model selector** (sidebar) with the five models. For the selected model the app shows:
+  Compatible inputs are accepted with a note: UTF-8 files with or without a BOM, Latin-1 files, `Churn` labels in
+  any capitalisation, and `SeniorCitizen` written as `0.0`/`1.0` or `Yes`/`No` (read as the training categories
+  0/1). Blank `TotalCharges` values are handled silently by the standard preprocessing rule (set to 0), with a
+  warning only if such a row has tenure > 0. Negative tenure or charges,
+  unseen category values and extra columns produce a warning, and the values are evaluated unchanged.
+  `customerID` is optional. These checks live in `src/app_logic.py`; `src/preprocessing.py`, which the saved
+  pipelines depend on, is unchanged.
+- **Evaluation-data note:** a reminder beside the upload controls to use unseen labelled data, because records
+  that were used for training give overly optimistic metrics. The app cannot detect such overlap itself.
+- **Dataset overview:** file name, number of records and the actual churn counts (Yes / No).
+- **Model selector** (sidebar) controlling the default **Inspect selected model** tab, which shows:
   - a short explanation and its exact configuration;
-  - six metric cards;
-  - a confusion-matrix heatmap;
-  - correct and incorrect prediction counts;
+  - six metric cards, each with the model's rank on that metric;
+  - a confusion-matrix heatmap with the TN / FP / FN / TP cells labelled;
   - the per-class classification report.
+- **Model comparison:** all six metrics for all five models (best value per column in bold) and the best model
+  by MCC (ties broken by AUC). Each metric card on the selected-model tab has a tooltip explaining the metric.
 - **Predictions download:** a CSV with the actual label and, for every model, the predicted label and churn
   probability.
 
@@ -324,12 +333,12 @@ Streamlit prints a local URL (normally http://localhost:8501); open it in a brow
 
 1. **Load test data:** in the sidebar, upload a labelled CSV, or switch on **Use bundled held-out test set**.
    You can also click **Download sample test CSV** to get a file in the correct format.
-2. **Check the dataset overview:** record count, churn distribution and any notes about the data, such as blank
-   `TotalCharges` values or unseen categories.
-3. **Compare all models:** the first tab shows the six-metric table for all five models, the best model by MCC
-   and a chart for any metric.
-4. **Inspect a model:** choose a classifier in the sidebar and open **Inspect selected model** to see its
-   metrics, confusion matrix, prediction counts and classification report.
+2. **Check the dataset overview:** record count, churn counts and any notes about the data, such as unseen
+   categories or negative values.
+3. **Inspect a model:** the first tab, **Inspect selected model**, shows the classifier chosen in the sidebar:
+   its six metrics, confusion matrix and classification report. Changing the sidebar selection updates it.
+4. **Compare all models:** the second tab shows the six-metric table for all five models and the best model
+   by MCC.
 5. **Download predictions:** the **Predictions** tab provides a CSV with actual and predicted labels and churn
    probabilities for all five models.
 
@@ -348,7 +357,7 @@ python -m src.train_models            # retrain the five pipelines; overwrites m
 python -m src.train_test_gap          # training vs test scores of the saved models
 python -m src.validate_preprocessing  # 19 checks
 python -m src.validate_models         # 53 checks
-python -m src.validate_app            # 31 checks
+python -m src.validate_app            # 67 checks
 ```
 
 Retraining is deterministic. On the development environment a second run produced byte-identical model and
@@ -361,7 +370,7 @@ because the app does not need it.
 |---|---|---|
 | `validate_preprocessing` | 19 / 19 | Original CSV unchanged; no train/test overlap; churn rate preserved in both splits; test CSV identical to the raw rows; no missing values after preprocessing; unseen categories handled; preprocessing fitted on training data only |
 | `validate_models` | 53 / 53 | Configurations as specified; every model fitted only on the 5,634 training rows; all six metrics recomputed independently from the reloaded models; AUC computed from probabilities; retraining reproduces identical predictions; no hardcoded results |
-| `validate_app` | 31 / 31 | App starts; all five models load; results on `test_data.csv` match Phase 3 exactly; valid and invalid uploads handled (missing columns, bad labels, blank `TotalCharges`, unseen categories, single class, different row counts); confusion matrix and report update with the selected model; no `fit()` is called while the app runs; model files unchanged |
+| `validate_app` | 67 / 67 | App starts; all five models load; results on `test_data.csv` match Phase 3 exactly; valid and invalid uploads handled (missing or duplicate columns, bad labels, non-finite numbers, other delimiters, malformed rows, binary and Latin-1 files, `SeniorCitizen` and label spellings, blank `TotalCharges`, negative values, unseen categories, single class, different row counts); missing or broken model files reported; the default tab follows the sidebar model selection; no `fit()` is called while the app runs; model files unchanged |
 
 ## 12. Deployment (Streamlit Community Cloud)
 

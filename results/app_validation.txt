@@ -6,27 +6,63 @@
 [PASS] Predicted labels in download are Yes/No and match model output
 [PASS] Different row count (250 rows) evaluates
 [PASS] Reordered columns + customerID + extra column accepted
-[PASS] All 11 blank TotalCharges rows handled by preprocessing (set to 0)  (61 rows)
+[PASS] All 11 blank TotalCharges rows evaluated exactly as TotalCharges = 0 (preprocessing rule unchanged)  (61 rows)
+[PASS] Blank TotalCharges with tenure > 0 still produces a warning
 [PASS] Unseen categorical values evaluate with a warning
 [PASS] Single-class upload: AUC shown as undefined, other metrics computed
 [PASS] Missing column rejected  (The CSV is missing 2 required column(s). Missing: tenure, Contract Required: the 19 input features plus the Ch)
 [PASS] Missing Churn column rejected  (The CSV is missing 1 required column(s). Missing: Churn Required: the 19 input features plus the Churn target )
-[PASS] Unexpected Churn label rejected  (The CSV contains values that cannot be evaluated. Unexpected Churn labels: 'Maybe'. Allowed values are exactly)
+[PASS] Unexpected Churn label rejected  (The CSV contains values that cannot be evaluated. Unexpected Churn labels: 'Maybe'. Allowed values are Yes and)
 [PASS] Blank Churn label rejected  (The CSV contains values that cannot be evaluated. Churn is blank in 1 row(s) (e.g. data rows 4).)
 [PASS] Non-numeric MonthlyCharges rejected  (The CSV contains values that cannot be evaluated. MonthlyCharges must be numeric but is blank or non-numeric i)
 [PASS] Empty file rejected  (The uploaded file is empty.)
 [PASS] Header-only file rejected  (The CSV has a header but no data rows.)
 [PASS] Non-CSV filename rejected  (Only .csv files are supported. Received: data.xlsx)
-[PASS] Binary/garbage content rejected  (The file is not a readable text CSV (encoding error).)
+[PASS] Binary/garbage content rejected  (The file is not a plain-text CSV. It contains binary data, e.g. an Excel workbook or a UTF-16 export. Save it )
+[PASS] Non-finite/huge tenure (inf) rejected  (The CSV contains values that cannot be evaluated. tenure has infinite or implausibly large values (beyond ±1e+)
+[PASS] Non-finite/huge TotalCharges (-inf) rejected  (The CSV contains values that cannot be evaluated. TotalCharges has infinite or implausibly large values (beyon)
+[PASS] Non-finite/huge MonthlyCharges (1e308) rejected  (The CSV contains values that cannot be evaluated. MonthlyCharges has infinite or implausibly large values (bey)
+[PASS] Duplicate column after trimming spaces rejected  (The CSV has duplicate column names. 'tenure' appears 2 times Names are compared after removing leading and tra)
+[PASS] Exact duplicate column rejected  (The CSV has duplicate column names. 'Churn' appears 2 times Names are compared after removing leading and trai)
+[PASS] Semicolon-separated file rejected with delimiter message  (The file appears to separate columns with semicolons (;), not commas. Save it as a comma-separated CSV (in Exc)
+[PASS] Tab-separated file rejected with delimiter message  (The file appears to separate columns with tabs, not commas. Save it as a comma-separated CSV (in Excel: 'CSV U)
+[PASS] Row with too many values rejected with line number  (The file could not be parsed as CSV. Expected 20 fields in line 6, saw 22 Every row must have the same number )
+[PASS] Every row longer than header rejected (no silent column shift)  (The data rows have more values than the header has column names. Check for a trailing comma at the end of each)
+[PASS] UTF-16 file rejected with re-save advice  (The file is not a plain-text CSV. It contains binary data, e.g. an Excel workbook or a UTF-16 export. Save it )
+[PASS] Wrong-case column name rejected with a hint  (The CSV is missing 1 required column(s). Missing: tenure Found 'Tenure': column names are case-sensitive, so r)
+[PASS] SeniorCitizen 0.0/1.0 normalised to training categories  (max abs diff=0.0)
+[PASS] SeniorCitizen Yes/No normalised to training categories  (max abs diff=0.0)
+[PASS] Churn labels in any capitalisation accepted  (max abs diff=0.0)
+[PASS] UTF-8 file with BOM accepted  (max abs diff=0.0)
+[PASS] Latin-1 file accepted after UTF-8 fails  (max abs diff=0.0)
+[PASS] Negative tenure evaluated unchanged with a warning
+[PASS] Blank category reported as (blank)
+[PASS] Unrecognised SeniorCitizen value still flagged as unseen (not silently mapped)
+[PASS] Missing and broken model files reported; the others still load  (K-Nearest Neighbors: file not found (knn.joblib); Support Vector Machine: could not be loaded (KeyError: 110))
 [PASS] App starts (welcome screen, no exceptions)
+[PASS] No permanent 'models loaded' success message
+[PASS] Title banner: heading plus roll number only (no subtitle or badges)
+[PASS] Welcome: no 'Available models' cards; expected CSV format kept
+[PASS] Evaluation-data note shown in the sidebar under the upload controls
+[PASS] Sidebar starts with '1 · Test data' (no Controls heading or subtitle)
 [PASS] App evaluates bundled test CSV without exceptions or errors  (exceptions=0)
 [PASS] Overview shows record count and churn distribution
-[PASS] Comparison table lists all five models with all six metrics
+[PASS] Overview cards have no percentage badges; no blank-TotalCharges notice
+[PASS] Tabs ordered Inspect / Compare / Predictions (Inspect is the default first tab)  (🔍  Inspect selected model | 📊  Compare all models | ⬇️  Predictions)
+[PASS] Default tab shows the model chosen in the sidebar
 [PASS] Six metric cards for default model match Phase 3  ({'Accuracy': 0.8055, 'AUC': 0.842, 'Precision': 0.6572, 'Recall': 0.5588, 'F1': 0.604, 'MCC': 0.479})
-[PASS] Confusion-matrix counts update on model change  (LR ('1,135', '274') -> NB ('980', '429'))
+[PASS] Selected-model tab: exactly one classification report, no separate TN/FP/FN/TP list
+[PASS] No correct/incorrect duplicate cards or outcomes table
+[PASS] Comparison table: all five models, exactly the six metrics (no rank column)
+[PASS] Comparison tab: no 'What the metrics mean' section; bold/tie-break note kept
+[PASS] Best-model summary kept; metric chart and its controls removed
+[PASS] Sidebar model change updates the default tab heading and metric cards
 [PASS] Classification report updates on model change
+[PASS] Predictions tab offers the download
 [PASS] No fit()/fit_transform() called while running the app  (15 methods guarded)
+[PASS] Partly failed model loading: clear errors, remaining models still evaluated
+[PASS] No models loaded: clear error and evaluation stops
 [PASS] Model files unchanged
 [PASS] Original CSV unchanged
 [PASS] No fit() calls in app source
-31/31 checks passed
+67/67 checks passed
