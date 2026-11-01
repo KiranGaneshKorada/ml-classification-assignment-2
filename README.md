@@ -280,33 +280,7 @@ Streamlit prints a local URL (normally http://localhost:8501); open it in a brow
 - `customerID` is optional and column order does not matter.
 - The file can have any number of rows.
 
-## 10. Reproducing the Results
-
-All scripts are run from the project folder and use fixed random seeds.
-
-```bash
-python src/inspection/inspect_dataset.py  # Phase 1: read-only summary of the raw CSV
-python -m src.preprocessing           # recreate the stratified split and test_data.csv
-python -m src.train_models            # retrain the five pipelines; overwrites model/ and src/results/
-python -m src.train_test_gap          # training vs test scores of the saved models
-python -m src.validate_preprocessing  # 19 checks
-python -m src.validate_models         # 53 checks
-python -m src.validate_app            # 67 checks
-```
-
-Retraining is deterministic. On the development environment a second run produced byte-identical model and
-result files. Re-executing the EDA notebook additionally requires Jupyter, which is not in `requirements.txt`
-because the app does not need it.
-
-## 11. Validation Summary
-
-| Suite | Checks | What it verifies |
-|---|---|---|
-| `validate_preprocessing` | 19 / 19 | Original CSV unchanged; no train/test overlap; churn rate preserved in both splits; test CSV identical to the raw rows; no missing values after preprocessing; unseen categories handled; preprocessing fitted on training data only |
-| `validate_models` | 53 / 53 | Configurations as specified; every model fitted only on the 5,634 training rows; all six metrics recomputed independently from the reloaded models; AUC computed from probabilities; retraining reproduces identical predictions; no hardcoded results |
-| `validate_app` | 67 / 67 | App starts; all five models load; results on `test_data.csv` match Phase 3 exactly; valid and invalid uploads handled (missing or duplicate columns, bad labels, non-finite numbers, other delimiters, malformed rows, binary and Latin-1 files, `SeniorCitizen` and label spellings, blank `TotalCharges`, negative values, unseen categories, single class, different row counts); missing or broken model files reported; the default tab follows the sidebar model selection; no `fit()` is called while the app runs; model files unchanged |
-
-## 12. Deployment (Streamlit Community Cloud)
+## 10. Deployment (Streamlit Community Cloud)
 
 The app is deployed on Streamlit Community Cloud at
 [telco-churn-classifier-2026aj05797.streamlit.app](https://telco-churn-classifier-2026aj05797.streamlit.app/).
