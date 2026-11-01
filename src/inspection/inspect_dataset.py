@@ -1,6 +1,6 @@
 """Read-only inspection of the Telco Customer Churn CSV.
 
-Usage: python3 inspect_dataset.py [path/to/csv]
+Usage: python3 src/inspection/inspect_dataset.py [path/to/csv]
 The CSV is only read; nothing is written back to disk.
 """
 import sys
@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 
-DEFAULT_CSV = Path(__file__).parent / "data" / "raw" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_CSV = PROJECT_ROOT / "data" / "raw" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
 TARGET = "Churn"
 ID_COL = "customerID"
 

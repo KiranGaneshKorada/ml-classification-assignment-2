@@ -1,7 +1,7 @@
 TELCO CUSTOMER CHURN - PHASE 3 BASELINE MODEL RESULTS
 ========================================================================
 Train rows: 5634 (churn rate 0.2654)   Test rows: 1409 (churn rate 0.2654)
-Split: 80/20 stratified, random_state=42 (Phase 2); test set = data/processed/test_data.csv
+Split: 80/20 stratified, random_state=42 (Phase 2); test set = test_data.csv
 Positive class: Churn = Yes (1). Precision/Recall/F1 use binary averaging, zero_division=0.
 AUC uses predict_proba() probabilities for the positive class.
 Environment: Python 3.9.6, scikit-learn 1.6.1

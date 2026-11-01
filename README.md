@@ -84,15 +84,15 @@ All preprocessing lives in [`src/preprocessing.py`](src/preprocessing.py) and is
    | Test | 1,409 | 1,035 (73.46%) | 374 (26.54%) |
 
    The test rows are saved verbatim from the raw CSV (19 features + `Churn`, without `customerID`) as
-   [`data/processed/test_data.csv`](data/processed/test_data.csv). Three of these rows keep their blank
+   [`test_data.csv`](test_data.csv) in the project root. Three of these rows keep their blank
    `TotalCharges`, which the pipeline handles when the file is loaded.
 5. **No leakage:** the scaler and encoder are fitted only on the training rows, as the first step of each model
    pipeline. Validation confirms that every fitted scaler saw exactly 5,634 rows.
 
 ## 4. Exploratory Data Analysis
 
-The full analysis with charts is in [`notebooks/exploratory_analysis.ipynb`](notebooks/exploratory_analysis.ipynb).
-Figures are exported to [`results/eda/`](results/eda/). The analysis uses all 7,043 rows for description only;
+The full analysis with charts is in [`src/notebooks/exploratory_analysis.ipynb`](src/notebooks/exploratory_analysis.ipynb).
+Figures are exported to [`src/results/eda/`](src/results/eda/). The analysis uses all 7,043 rows for description only;
 nothing is fitted in the notebook.
 
 | Pattern | Evidence |
@@ -107,7 +107,7 @@ nothing is fitted in the notebook.
 | Tenure has the strongest linear link to churn | r = −0.35 (tenure), −0.20 (TotalCharges), +0.19 (MonthlyCharges) |
 
 <p align="center">
-  <img src="results/eda/02_churn_by_contract.png" alt="Churn rate by contract type" width="640">
+  <img src="src/results/eda/02_churn_by_contract.png" alt="Churn rate by contract type" width="640">
 </p>
 
 ## 5. Models Used
@@ -140,9 +140,9 @@ the identical 5,634-row training split. No hyperparameter tuning was performed; 
 | Gaussian Naive Bayes | 0.6955 | 0.8075 | 0.4597 | **0.8396** | 0.5941 | 0.4268 |
 | SVM | 0.7899 | 0.7928 | 0.6373 | 0.4840 | 0.5502 | 0.4232 |
 
-Bold marks the best value in each column. Source: [`results/model_comparison.csv`](results/model_comparison.csv).
-The full classification reports are in [`results/classification_reports/`](results/classification_reports/) and a
-readable summary is in [`results/metrics_summary.txt`](results/metrics_summary.txt).
+Bold marks the best value in each column. Source: [`src/results/model_comparison.csv`](src/results/model_comparison.csv).
+The full classification reports are in [`src/results/classification_reports/`](src/results/classification_reports/) and a
+readable summary is in [`src/results/metrics_summary.txt`](src/results/metrics_summary.txt).
 
 ### 5.2 Confusion matrices (test set: 1,035 stayed, 374 churned)
 
@@ -160,12 +160,12 @@ How to read this:
 - The models trade these two errors differently: SVM raises the fewest false alarms but misses the most churners,
   while Gaussian Naive Bayes misses the fewest churners at the cost of the most false alarms.
 
-Heatmaps for each model are in [`results/confusion_matrices/`](results/confusion_matrices/).
+Heatmaps for each model are in [`src/results/confusion_matrices/`](src/results/confusion_matrices/).
 
 ### 5.3 Training vs. test scores
 
 To check for overfitting, the saved pipelines were also scored on their own training split, without any
-refitting ([`src/train_test_gap.py`](src/train_test_gap.py) → [`results/train_test_gap.txt`](results/train_test_gap.txt)).
+refitting ([`src/train_test_gap.py`](src/train_test_gap.py) → [`src/results/train_test_gap.txt`](src/results/train_test_gap.txt)).
 
 | ML Model Name | Train Accuracy | Test Accuracy | Train MCC | Test MCC |
 |---|---|---|---|---|
@@ -222,7 +222,7 @@ therefore depends on the relative cost of the two error types.
 test CSV**. Every result shown in the app is calculated live from the uploaded file.
 
 **Features:**
-- **CSV upload** (`.csv` only), plus a switch to use the bundled `data/processed/test_data.csv` and a button to
+- **CSV upload** (`.csv` only), plus a switch to use the bundled `test_data.csv` and a button to
   download it as a sample.
 - **Input validation with clear error messages.** The app rejects, with an explanation:
   - missing columns, by name (with a hint when only the capitalisation differs);
@@ -264,40 +264,42 @@ test CSV**. Every result shown in the app is calculated live from the uploaded f
 ```
 ml-classification-assignment-2/
 ├── app.py                              # Streamlit dashboard (entry point)
+├── test_data.csv                       # held-out test set (1,409 rows, 19 features + Churn), bundled with the app
 ├── requirements.txt                    # Pinned runtime dependencies
 ├── README.md
 ├── .gitignore
 ├── .streamlit/config.toml              # App theme and upload limit
-├── inspect_dataset.py                  # Phase 1: read-only inspection of the raw CSV
+├── .devcontainer/devcontainer.json     # Dev container / GitHub Codespaces setup
 ├── data/
-│   ├── raw/WA_Fn-UseC_-Telco-Customer-Churn.csv     # original dataset (unmodified)
-│   └── processed/test_data.csv                      # held-out test set (1,409 rows, 19 features + Churn)
+│   └── raw/WA_Fn-UseC_-Telco-Customer-Churn.csv     # original dataset (unmodified; needed to reproduce the split)
 ├── model/                              # five fitted pipelines (preprocessing + classifier)
 │   ├── logistic_regression.joblib
 │   ├── decision_tree.joblib
 │   ├── knn.joblib
 │   ├── naive_bayes.joblib
 │   └── svm.joblib
-├── notebooks/
-│   └── exploratory_analysis.ipynb      # EDA with charts and observations
-├── src/
-│   ├── preprocessing.py                # cleaning, preprocessing pipeline, train/test split
-│   ├── train_models.py                 # trains, evaluates and saves the five models
-│   ├── evaluate_models.py              # metric, report and confusion-matrix helpers
-│   ├── app_logic.py                    # app logic: model loading, CSV validation, evaluation
-│   ├── train_test_gap.py               # train vs test scores of the saved models (read-only)
-│   ├── validate_preprocessing.py       # Phase 2 checks
-│   ├── validate_models.py              # Phase 3 checks
-│   └── validate_app.py                 # Phase 4 checks
-└── results/
-    ├── model_comparison.csv            # 5 models x 6 metrics
-    ├── metrics_summary.txt             # readable summary of all results
-    ├── test_predictions.csv            # per-row predictions and probabilities for each model
-    ├── train_test_gap.csv / .txt       # training vs test scores
-    ├── classification_reports/         # one report per model
-    ├── confusion_matrices/             # CSV + PNG per model
-    ├── eda/                            # EDA figures
-    └── *_validation.txt                # validation outputs for each phase
+└── src/
+    ├── preprocessing.py                # cleaning, preprocessing pipeline, train/test split
+    ├── train_models.py                 # trains, evaluates and saves the five models
+    ├── evaluate_models.py              # metric, report and confusion-matrix helpers
+    ├── app_logic.py                    # app logic: model loading, CSV validation, evaluation
+    ├── train_test_gap.py               # train vs test scores of the saved models (read-only)
+    ├── validate_preprocessing.py       # Phase 2 checks
+    ├── validate_models.py              # Phase 3 checks
+    ├── validate_app.py                 # Phase 4 checks
+    ├── inspection/
+    │   └── inspect_dataset.py          # Phase 1: read-only inspection of the raw CSV
+    ├── notebooks/
+    │   └── exploratory_analysis.ipynb  # EDA with charts and observations
+    └── results/
+        ├── model_comparison.csv        # 5 models x 6 metrics
+        ├── metrics_summary.txt         # readable summary of all results
+        ├── test_predictions.csv        # per-row predictions and probabilities for each model
+        ├── train_test_gap.csv / .txt   # training vs test scores
+        ├── classification_reports/     # one report per model
+        ├── confusion_matrices/         # CSV + PNG per model
+        ├── eda/                        # EDA figures
+        └── *_validation.txt            # validation outputs for each phase
 ```
 
 ## 8. Installation
@@ -352,8 +354,9 @@ Streamlit prints a local URL (normally http://localhost:8501); open it in a brow
 All scripts are run from the project folder and use fixed random seeds.
 
 ```bash
-python -m src.preprocessing           # recreate the stratified split and data/processed/test_data.csv
-python -m src.train_models            # retrain the five pipelines; overwrites model/ and results/
+python src/inspection/inspect_dataset.py  # Phase 1: read-only summary of the raw CSV
+python -m src.preprocessing           # recreate the stratified split and test_data.csv
+python -m src.train_models            # retrain the five pipelines; overwrites model/ and src/results/
 python -m src.train_test_gap          # training vs test scores of the saved models
 python -m src.validate_preprocessing  # 19 checks
 python -m src.validate_models         # 53 checks
@@ -379,7 +382,7 @@ The app is deployed on Streamlit Community Cloud at
 
 To deploy your own copy:
 
-1. Push this repository to GitHub, including `model/*.joblib` and `data/processed/test_data.csv`.
+1. Push this repository to GitHub, including `model/*.joblib` and `test_data.csv`.
 2. On [share.streamlit.io](https://share.streamlit.io), create a new app from the repository, then choose the
    branch and set the main file path to `app.py`.
 3. Under **Advanced settings**, choose **Python 3.12** (any of 3.9–3.12 works with the pinned versions).

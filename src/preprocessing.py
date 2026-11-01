@@ -1,7 +1,7 @@
 """Reusable preprocessing for the Telco Customer Churn assignment.
 
 The pipeline returned by build_preprocessor() accepts raw feature columns exactly
-as they appear in the original CSV or in data/processed/test_data.csv, so model
+as they appear in the original CSV or in test_data.csv (project root), so model
 training and the Streamlit app share the same transformations.
 
 Running this module creates the stratified train/test split and saves the
@@ -18,7 +18,7 @@ from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardSc
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
-TEST_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "test_data.csv"
+TEST_DATA_PATH = PROJECT_ROOT / "test_data.csv"
 
 ID_COLUMN = "customerID"
 TARGET = "Churn"

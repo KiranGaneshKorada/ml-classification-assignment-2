@@ -199,7 +199,7 @@ with st.sidebar:
     use_sample = False
     if TEST_DATA_PATH.exists():
         use_sample = st.toggle("Use bundled held-out test set", disabled=uploaded is not None,
-                               help="data/processed/test_data.csv: the 20% stratified test split, "
+                               help="test_data.csv: the 20% stratified test split, "
                                     "never used for training.")
         st.download_button("Download sample test CSV", TEST_DATA_PATH.read_bytes(),
                            file_name="test_data.csv", mime="text/csv", width="stretch")

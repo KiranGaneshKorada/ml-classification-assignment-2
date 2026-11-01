@@ -3,7 +3,7 @@
 Usage: python3 -m src.train_models
 
 Each model is Pipeline(preprocessor -> classifier), fitted on the Phase 2 training
-split only and evaluated on data/processed/test_data.csv. Saved pipelines accept
+split only and evaluated on test_data.csv (project root). Saved pipelines accept
 raw feature columns, so the future Streamlit app can load test CSVs directly.
 """
 import platform
@@ -30,7 +30,7 @@ from src.preprocessing import (
 )
 
 MODEL_DIR = PROJECT_ROOT / "model"
-RESULTS_DIR = PROJECT_ROOT / "results"
+RESULTS_DIR = PROJECT_ROOT / "src" / "results"
 COMPARISON_PATH = RESULTS_DIR / "model_comparison.csv"
 PREDICTIONS_PATH = RESULTS_DIR / "test_predictions.csv"
 REPORTS_DIR = RESULTS_DIR / "classification_reports"
@@ -70,7 +70,7 @@ def load_datasets():
     """Return X_train, y_train (Phase 2 split) and X_test, y_test (saved test CSV).
 
     The split is regenerated with the fixed Phase 2 settings; this stops if the
-    regenerated test rows differ from data/processed/test_data.csv.
+    regenerated test rows differ from test_data.csv.
     """
     X_train, X_test_split, y_train, y_test_split = load_train_test_split()
     X_test, y_test = split_features_target(pd.read_csv(TEST_DATA_PATH))
@@ -136,7 +136,7 @@ def write_summary(comparison, reports, matrices, fit_warnings, fitted, y_train, 
         "=" * 72,
         f"Train rows: {len(y_train)} (churn rate {y_train.mean():.4f})   "
         f"Test rows: {len(y_test)} (churn rate {y_test.mean():.4f})",
-        "Split: 80/20 stratified, random_state=42 (Phase 2); test set = data/processed/test_data.csv",
+        "Split: 80/20 stratified, random_state=42 (Phase 2); test set = test_data.csv",
         "Positive class: Churn = Yes (1). Precision/Recall/F1 use binary averaging, zero_division=0.",
         "AUC uses predict_proba() probabilities for the positive class.",
         f"Environment: Python {platform.python_version()}, scikit-learn {sklearn.__version__}",
